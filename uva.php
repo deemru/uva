@@ -115,9 +115,9 @@ function uva_log( $type, $msg = '' )
     echo date('Y.m.d H:i:s ') . "$type$msg" . PHP_EOL;
 }
 
-function uva_run()
+function uva_run( $cameras, $date_work )
 {
-    foreach( $UVA_CAMERAS as $camera )
+    foreach( $cameras as $camera )
     {
         $day_back = 0;
         $max_jumps = 5;
@@ -304,7 +304,7 @@ while( true )
         continue;
     }
 
-    uva_run();
+    uva_run( $UVA_CAMERAS, $date_work );
 
     $date_work = time() - $date_work;
     uva_log( 'i', sprintf( 'Work done in %02d:%02d:%02d', floor( $date_work / 3600 ), floor( $date_work / 60 ) % 60, $date_work % 60 ) );
