@@ -264,12 +264,13 @@ function uva_run( $cameras, $date_work )
 
             $c = 0;
 
-            $temp_file = UVA_TEMP_DIRECTORY . 'temp.jpeg';
+            $temp_file = UVA_TEMP_DIRECTORY . 'temp.jpg';
 
             foreach( $renders_final as $file )
             {
                 exec( UVA_FFMPEG . " -y -i $file -f mjpeg -vframes 1 $temp_file 2>&1" );
 
+                clearstatcache();
                 if( !file_exists( $temp_file ) || filesize( $temp_file ) == 0 )
                 {
                     uva_log( 'e', $file );
