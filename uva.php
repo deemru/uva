@@ -11,7 +11,7 @@ $UVA_CAMERAS = array(
 define( 'UVA_OUTPUT_DIRECTORY', 'P:/Camera_Timelapser/' );
 define( 'UVA_CAMERA_DIRECTORY', 'R:/Cameras/' );
 define( 'UVA_TEMP_DIRECTORY', 'C:/Temp/' );
-define( 'UVA_FFMPEG', 'C:/_lll_/work/ffmpeg.exe' );
+define( 'UVA_FFMPEG', 'C:/_lll_/work/ffmpeg.exe' ); // or avconv
 
 define( 'UVA_MAX_DURATION_NO_MOTION', 20 );
 define( 'UVA_MAX_DURATION', 60 );
@@ -164,25 +164,24 @@ function uva_run( $cameras, $date_work )
             $motions = &$jsons['motions'];
 
             $n = sizeof( $times );
-
-            $time_min = 99999;
-            $time_max = 0;
-            $time_aprox = 0;
             $motions_count = 0;
 
             for( $i = 0; $i < $n; $i++ )
                 if( $motions[ $i ] )
                 {
                     $motions_count++;
-                    $time_min = min( $time_min, $times[ $i ] );
-                    $time_max = max( $time_max, $times[ $i ] );
+                    $time_min = isset( $time_min ) ? min( $time_min, $times[ $i ] ) : $times[ $i ];
+                    $time_max = isset( $time_max ) ? max( $time_max, $times[ $i ] ) : $times[ $i ];
                     $time_aprox = ( $time_aprox * $i + $times[ $i ] ) / ( $i + 1 );
                 }
 
             uva_log( 'i', "Motion count - $motions_count" );
-            uva_log( 'i', 'Minimum motion time - ' . round( $time_min, 2 ) );
-            uva_log( 'i', 'Maximum motion time - ' . round( $time_max, 2 ) );
-            uva_log( 'i', 'Average motion time - ' . round( $time_aprox, 2 ) );
+            if( $motions_count )
+            {
+              uva_log( 'i', 'Minimum motion time - ' . round( $time_min, 2 ) );
+              uva_log( 'i', 'Maximum motion time - ' . round( $time_max, 2 ) );
+              uva_log( 'i', 'Average motion time - ' . round( $time_aprox, 2 ) );
+            }
 
             $skippers = array();
 
@@ -224,14 +223,13 @@ function uva_run( $cameras, $date_work )
 
             uva_log( 'i', 'Motion segments - ' . sizeof( $renders ) );
 
-            $n = sizeof( $segments['files'] ) - 1;
+            $n = sizeof( $segments['files'] );
 
             if( $n > UVA_FPS * UVA_MAX_DURATION_NO_MOTION )
             {
                 $q = $n / UVA_FPS / UVA_MAX_DURATION_NO_MOTION;
-                $n = ceil( $n / $q );
 
-                for( $i = 0; $i < $n; $i++ )
+                for( $i = 0; $i < UVA_FPS * UVA_MAX_DURATION_NO_MOTION; $i++ )
                     $renders[ $segments['files'][ ceil( $i * $q ) ] ] = true;
             }
 
@@ -240,26 +238,30 @@ function uva_run( $cameras, $date_work )
             $renders = array_keys( $renders );
             usort( $renders, 'uva_cmp' );
 
-            $n = sizeof( $renders ) - 1;
+            $n = sizeof( $renders );
 
             if( $n > UVA_FPS * UVA_MAX_DURATION )
             {
                 $q = $n / UVA_FPS / UVA_MAX_DURATION;
-                $n = ceil( $n / $q );
 
                 $renders_final = array();
 
-                for( $i = 0; $i < $n; $i++ )
-                {
+                for( $i = 0; $i < UVA_FPS * UVA_MAX_DURATION; $i++ )
                     $renders_final[] = $renders[ ceil( $i * $q ) ];
-                }
             }
             else
                 $renders_final = $renders;
 
             $total_segments = sizeof( $renders_final );
 
-            uva_log( 'i', 'Final segments - ' . sizeof( $renders ) );
+            uva_log( 'i', 'Final segments - ' . $total_segments );
+
+            if( $total_segments == 0 )
+            {
+                uva_log( 'w', 'Skip' );
+                continue;
+            }
+
             uva_log( 'i', 'Processing segments...' );
 
             $c = 0;
@@ -268,7 +270,7 @@ function uva_run( $cameras, $date_work )
 
             foreach( $renders_final as $file )
             {
-                exec( UVA_FFMPEG . " -y -i $file -f mjpeg -vframes 1 $temp_file 2>&1" );
+                exec( '"' . UVA_FFMPEG . "\" -y -i \"$file\" -f mjpeg -vframes 1 \"$temp_file\" 2>&1" );
 
                 clearstatcache();
                 if( !file_exists( $temp_file ) || filesize( $temp_file ) == 0 )
@@ -283,7 +285,7 @@ function uva_run( $cameras, $date_work )
 
             uva_log( 'i', 'OK' );
 
-            exec( UVA_FFMPEG . ' -r ' . UVA_FPS . ' -y -i ' . UVA_TEMP_DIRECTORY . 'image_%010d.jpg -vcodec libx264 -crf '. UVA_CRF . " $video_file" );
+            exec( '"' .UVA_FFMPEG . '" -r ' . UVA_FPS . ' -y -i "' . UVA_TEMP_DIRECTORY . 'image_%010d.jpg" -vcodec libx264 -crf '. UVA_CRF . " \"$video_file\"" );
             uva_cleanup();
         }
     }
