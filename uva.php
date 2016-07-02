@@ -170,11 +170,19 @@ function uva_run( $cameras, $date_work )
                 if( $motions[ $i ] )
                 {
                     $motions_count++;
-                    $time_min = isset( $time_min ) ? min( $time_min, $times[ $i ] ) : $times[ $i ];
-                    $time_max = isset( $time_max ) ? max( $time_max, $times[ $i ] ) : $times[ $i ];
-                    $time_aprox = ( $time_aprox * $i + $times[ $i ] ) / ( $i + 1 );
+                    if( $motions_count == 1 )
+                    {
+                        $time_min = $times[ $i ];
+                        $time_max = $times[ $i ];
+                        $time_aprox = $times[ $i ];
+                    }
+                    else
+                    {
+                        $time_min = min( $time_min, $times[ $i ] );
+                        $time_max = max( $time_max, $times[ $i ] );
+                        $time_aprox = $time_aprox * $i + $times[ $i ] ) / ( $i + 1 );
+                    }
                 }
-
             uva_log( 'i', "Motion count - $motions_count" );
             if( $motions_count )
             {
