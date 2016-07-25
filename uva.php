@@ -165,68 +165,71 @@ function uva_run( $cameras, $date_work )
 
             $n = sizeof( $times );
             $motions_count = 0;
-
-            for( $i = 0; $i < $n; $i++ )
-                if( $motions[ $i ] )
-                {
-                    $motions_count++;
-                    if( $motions_count == 1 )
-                    {
-                        $time_min = $times[ $i ];
-                        $time_max = $times[ $i ];
-                        $time_aprox = $times[ $i ];
-                    }
-                    else
-                    {
-                        $time_min = min( $time_min, $times[ $i ] );
-                        $time_max = max( $time_max, $times[ $i ] );
-                        $time_aprox = ( $time_aprox * $i + $times[ $i ] ) / ( $i + 1 );
-                    }
-                }
-            uva_log( 'i', "Motion count - $motions_count" );
-            if( $motions_count )
-            {
-              uva_log( 'i', 'Minimum motion time - ' . round( $time_min, 2 ) );
-              uva_log( 'i', 'Maximum motion time - ' . round( $time_max, 2 ) );
-              uva_log( 'i', 'Average motion time - ' . round( $time_aprox, 2 ) );
-            }
-
-            $skippers = array();
-
-            for( $i = 0; $i < $n; $i++ )
-            {
-                $skippers[ $i ] = 1;
-
-                if( $motions[ $i ] == false || $camera['jam'] == false )
-                    continue;
-
-                $time = $times[ $i ];
-
-                for( $q = 64; $q > 0.125; $q /= 2 )
-                    if( $time > $time_aprox * $q )
-                        $skippers[ $i ] = $time / 128 / $q;
-
-                $skippers[ $i ] = max( $skippers[ $i ], 1 );
-            }
-
             $renders = array();
 
-            for( $i = 0; $i < $n; $i++ )
+            if( !isset( $camera['motions'] ) || $camera['motions'] == true )
             {
-                if( $motions[ $i ] == false )
-                    continue;
+                for( $i = 0; $i < $n; $i++ )
+                    if( $motions[ $i ] )
+                    {
+                        $motions_count++;
+                        if( $motions_count == 1 )
+                        {
+                            $time_min = $times[ $i ];
+                            $time_max = $times[ $i ];
+                            $time_aprox = $times[ $i ];
+                        }
+                        else
+                        {
+                            $time_min = min( $time_min, $times[ $i ] );
+                            $time_max = max( $time_max, $times[ $i ] );
+                            $time_aprox = ( $time_aprox * $i + $times[ $i ] ) / ( $i + 1 );
+                        }
+                    }
 
-                if( !isset( $segments['starts'][ $starts[ $i ] ] ) ||
-                    !isset( $segments['ends'][ $ends[ $i ] ] ) )
-                    continue;
+                uva_log( 'i', "Motion count - $motions_count" );
+                if( $motions_count )
+                {
+                  uva_log( 'i', 'Minimum motion time - ' . round( $time_min, 2 ) );
+                  uva_log( 'i', 'Maximum motion time - ' . round( $time_max, 2 ) );
+                  uva_log( 'i', 'Average motion time - ' . round( $time_aprox, 2 ) );
+                }
 
-                $start = $segments['starts'][ $starts[ $i ] ];
-                $end = $segments['ends'][ $ends[ $i ] ];
-                $skipper = $skippers[ $i ];
-                $count = ceil( ( $end - $start ) / $skipper );
+                $skippers = array();
 
-                for( $j = 0; $j < $count; $j++ )
-                    $renders[ $segments['files'][ ceil( $start + $j * $skipper ) ] ] = true;
+                for( $i = 0; $i < $n; $i++ )
+                {
+                    $skippers[ $i ] = 1;
+
+                    if( $motions[ $i ] == false || $camera['jam'] == false )
+                        continue;
+
+                    $time = $times[ $i ];
+
+                    for( $q = 64; $q > 0.125; $q /= 2 )
+                        if( $time > $time_aprox * $q )
+                            $skippers[ $i ] = $time / 128 / $q;
+
+                    $skippers[ $i ] = max( $skippers[ $i ], 1 );
+                }
+
+                for( $i = 0; $i < $n; $i++ )
+                {
+                    if( $motions[ $i ] == false )
+                        continue;
+
+                    if( !isset( $segments['starts'][ $starts[ $i ] ] ) ||
+                        !isset( $segments['ends'][ $ends[ $i ] ] ) )
+                        continue;
+
+                    $start = $segments['starts'][ $starts[ $i ] ];
+                    $end = $segments['ends'][ $ends[ $i ] ];
+                    $skipper = $skippers[ $i ];
+                    $count = ceil( ( $end - $start ) / $skipper );
+
+                    for( $j = 0; $j < $count; $j++ )
+                        $renders[ $segments['files'][ ceil( $start + $j * $skipper ) ] ] = true;
+                }
             }
 
             uva_log( 'i', 'Motion segments - ' . sizeof( $renders ) );
@@ -299,7 +302,7 @@ function uva_run( $cameras, $date_work )
     }
 }
 
-uva_log( 'i', 'UniFi Video Archive' );
+uva_log( 'i', 'UniFi Video Archiver (github/deemru/uva)' );
 
 while( true )
 {
@@ -310,6 +313,14 @@ while( true )
     if( !file_exists( UVA_OUTPUT_DIRECTORY ) )
     {
         uva_log( 'e', UVA_OUTPUT_DIRECTORY );
+        uva_log( 'i', 'Sleeping for 1 hour...' );
+        sleep( 3600 );
+        continue;
+    }
+
+    if( date( 'H', $date_work ) > 22 || date( 'H', $date_work ) < 3 )
+    {
+        uva_log( 'w', 'Avoiding 22..03 hours' );
         uva_log( 'i', 'Sleeping for 1 hour...' );
         sleep( 3600 );
         continue;
